@@ -1,0 +1,8 @@
+.DS_Store
+
+/.bundle
+/vendor/bundle
+
+/logs/*
+/pids/*
+/db/*.sqlite3
