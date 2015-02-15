@@ -6,7 +6,7 @@ require 'json'
 require 'sqlite3'
 require 'yaml'
 
-config = YAML.load_file(ARGV[0] ||= 'config.yml')
+config = YAML.load_file('config.yml')
 LOG_FILE_PATH  = Dir.pwd + '/logs/proxy.log'
 DATABASE_PATH  = Dir.pwd + '/db/' + config[:db]
 

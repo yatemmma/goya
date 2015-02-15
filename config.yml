@@ -1,4 +1,4 @@
 :app_address: 127.0.0.1
-:app_port: 3000
+:app_port: 8081
 :proxy_port: 8080
 :db: goya.sqlite3

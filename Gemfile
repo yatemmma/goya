@@ -2,5 +2,5 @@ source 'https://rubygems.org'
 
 gem 'rake'
 gem 'sqlite3'
-gem 'pry'
-gem 'pry-byebug'
+gem 'eventmachine'
+gem 'websocket-eventmachine-server'

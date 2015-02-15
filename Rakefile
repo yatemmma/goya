@@ -1,16 +1,16 @@
 task :default => :start
 
-desc 'goya, get to work!'
-task :start => ['proxy:start']
+desc 'get to work!'
+task :start => ['proxy:start', 'server:start']
 
-desc 'goya does not rest'
-task :stop => ['proxy:stop']
+desc 'reward from admiral'
+task :stop => ['proxy:stop', 'server:stop']
 
-desc 'goya, go to next cruising!'
+desc 'go to next cruising!'
 task :restart => [:stop, :start]
 
 namespace :proxy do
-	exec_file = 'app/proxy/proxy.rb'
+	exec_file = 'app/proxy.rb'
 	pid_file  = 'pids/proxy.pid'
 
 	desc 'start proxy server'
@@ -27,8 +27,27 @@ namespace :proxy do
 	task :restart => [:stop, :start]
 end
 
-def start_server(exec_file, pid_file)
-	cmd = "bundle exec ruby #{exec_file}"
+namespace :server do
+	exec_file = 'app/server.rb'
+	pid_file  = 'pids/server.pid'
+
+	desc 'start websocket server'
+	task :start do
+		start_server(exec_file, pid_file, true)
+	end
+
+	desc 'stop websocket server'
+	task :stop do
+		stop_server(pid_file)
+	end
+
+	desc 'restart websocket server'
+	task :restart => [:stop, :start]
+end
+
+def start_server(exec_file, pid_file, nohup=false)
+	cmd = "bundle exec ruby -I app #{exec_file}"
+	cmd = "nohup #{cmd} &" if nohup
 	puts cmd
 	system(cmd)
 
