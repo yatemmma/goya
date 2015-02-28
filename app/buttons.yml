@@ -1,14 +1,51 @@
 :common:
+  :login:      [603, 404, /api_port/port]
   :port:       [ 52,  44, /api_port/port]
 :port:
   :quest_list:     [555,  50, /api_get_member/questlist]
   :mission_result: [772,  50, /api_req_mission/result, /api_port/port, /api_get_member/useitem]
-  :charge:         [ 77, 221]
-  :battle_select:  [190, 261]
+  :charge:         [ 77, 220]
+  :battle_select:  [190, 260]
+  :kosho:          [270, 365]
+:kosho:
+  :kaitai:     [226, 252]
+  :develop:    [215, 340]
+:kenzo:
+  :dock1:      [616, 177]
+  :dock2:      [616, 258]
+  :start:      [705, 440]
+:develop:
+  :bauxite_1up: [588, 286]
+  :start:       [705, 440, /api_req_kousyou/createitem]
+  :ok:          [757, 437]
 :battle_select:
   :battle:     [225, 225, /api_get_member/mapinfo]
   :practice:   [449, 225, /api_get_member/practice]
   :mission:    [676, 225, /api_get_member/mission]
+:battle:
+  :area1:      [154, 445]
+  :area2:      [232, 446]
+  :area3:      [306, 446]
+  :area4:      [375, 447]
+  :area5:      [451, 448]
+  :area6:      [527, 447]
+  :stage1:     [269, 210]
+  :stage2:     [604, 205]
+  :stage3:     [277, 358]
+  :stage4:     [615, 348]
+  :select:     [680, 447]
+  :deck1:      [362, 120]
+  :start:      [624, 446, /api_get_member/mapcell, /api_req_map/start]
+:map:
+  :compass:       [400, 240]
+  :format1:       [445, 187, /api_req_sortie/battle]
+  :go_next:       [  0,   0, /api_req_map/next]
+  :battle_finish: [  0,   0, /api_req_sortie/battleresult]
+  :midnight_yes:  [509, 242, /api_req_battle_midnight/battle]
+  :midnight_no:   [288, 244, /api_req_sortie/battleresult]
+  :result_ok:     [749, 430]
+  :next:          [289, 243]
+  :back:          [507, 244, /api_port/port]
 :mission:
   :area1:      [134, 440]
   :area2:      [197, 440]
@@ -44,7 +81,7 @@
   :complete3:  [735, 343, /api_req_quest/clearitemget]
   :complete4:  [735, 410, /api_req_quest/clearitemget]
   :ok:         [400, 400]
-  :ok_last:    [400, 400, /api_get_member/material, /api_get_member/questlist]
+  :ok_last:    [400, 400, /api_get_member/questlist]
 :charge:
   :deck1:      [146, 120]
   :deck2:      [177, 120]

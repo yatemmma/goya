@@ -16,6 +16,13 @@ class Observer
 		id = convert_hash(result)[:id]
 	end
 
+	def latest_data(uri)
+		db = SQLite3::Database.new(@db_path)
+		result = db.get_first_row("select * from logs where uri like '%#{uri}' order by id desc limit 1")
+		db.close
+		convert_hash(result)
+	end
+
 	def wait_for_response(id, expects, &block)
 		@cancelled = false
 		db = SQLite3::Database.new(@db_path)

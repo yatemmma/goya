@@ -25,7 +25,7 @@ EM::run do
           Logger.write(message)
           begin
         	  @goya.work(JSON.parse(message))
-            @channel.push 'job completed.'
+            @channel.push "job completed. #{Time.new}"
           rescue => e
             Logger.write("#{e.class}, #{e.message}")
             Logger.write(e.backtrace.join("\n"))

@@ -3,11 +3,13 @@ goya
 
 Hello from the sea!
 
-## Version
-
-0.0.1 forever beta
-
 ## Usage
+
+install [cliclick](https://github.com/BlueM/cliclick)
+
+```
+$ brew install cliclick
+```
 
 start server
 
@@ -22,7 +24,7 @@ and open page on browser
 $ open app/html/index.html
 ```
 
-enjoy!
+enjoy cruising!
 
 ## Support
 

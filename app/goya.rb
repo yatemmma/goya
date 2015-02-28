@@ -27,6 +27,8 @@ class Goya
   def work(message=nil)
     if message['job'].eql? 'cancel'
       cancel
+    elsif message['job'][0, 1].eql? '/'
+      latest_result(message['job'])
     else
       speak "**** I have a new job. #{message}"
       do_job(message)
@@ -102,6 +104,13 @@ class Goya
     target = target_page[button]
     raise "button not found. #{button}" if target.nil?
     target
+  end
+
+  def latest_result(uri)
+    data = @observer.latest_data(uri)
+    body = {:uri => "latest: #{uri}", :body => data[:body]}
+    speak "raw=#{body.to_json}"
+    Result.new([data])
   end
   
   def cursor(params=nil)
