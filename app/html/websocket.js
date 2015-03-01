@@ -5,12 +5,12 @@ ws.onmessage = function(e) {
 };
 
 ws.onopen = function(e) {
-  print("[log] websocket open");
+  print("websocket open");
   console.log(e);
 };
 
 ws.onclose = function(e) {
-  print("[log] websocket close");
+  print("websocket close");
   console.log(e);
 };
 
@@ -22,14 +22,34 @@ $(function() {
 });
 
 var post = function() {
-  var msg = $("#command").val();
-  ws.send('{"job":"' + msg + '"}');
+  ws.send($("#command").val());
 };
 
 var print = function(msg) {
-  if (msg.substring(0,4) == "raw=") {
-    console.log(JSON.parse(msg.substring(4,msg.length)));
-  } else {
-    $("#chat").prepend($("<li>").text(msg));  
+  var $li = $("<li>");
+  var response = null;
+  try {
+    response = JSON.parse(msg);
+  } catch (e) {
+    response = {};
   }
+  $span = $("<span>");
+  if (response.type === "wait") {
+    $span.text('wait ' + response.time + ' sec');
+  } else if (response.type === "job") {
+    $span.text(response.message);
+  } else if (response.type === "uri") {
+    $span.text(response.uri);
+    console.log(response.data);
+  } else if (response.type === "click") {
+    $span.text('[' + response.page + '] > [' + response.button + '] ' + response.expects.join(','));
+  } else if (response.type === "error") {
+    $span.text(response.message);
+  } else {
+    $span.text(msg);
+  }
+  $li.addClass(response.type);
+  $li.prepend($("<span>").text(Date.create().format('{M}/{d} {hh}:{mm}:{ss}')));
+  $li.append($span);
+  $("#chat").prepend($li);
 };

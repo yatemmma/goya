@@ -7,8 +7,8 @@ require 'sqlite3'
 require 'yaml'
 
 config = YAML.load_file('config.yml')
-LOG_FILE_PATH  = Dir.pwd + '/logs/proxy.log'
-DATABASE_PATH  = Dir.pwd + '/db/' + config[:db]
+LOG_FILE_PATH = "#{Dir.pwd}/logs/proxy.log"
+DATABASE_PATH = "#{Dir.pwd}/db/#{config[:db]}"
 
 logger = WEBrick::Log::new(LOG_FILE_PATH, WEBrick::Log::DEBUG)
 

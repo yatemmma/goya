@@ -5,7 +5,7 @@ module Scenarios
 
   def login(params=nil)
     result = action(:common, :login).port_result
-
+    wait 3
     mission_complete(result)    
   end
 
@@ -83,7 +83,7 @@ module Scenarios
   def quest_list(missions=nil)
   	result = action(:port, :quest_list).quest_list_result
   	action(:quest_list, :oyodo)
-  	sleep 2
+  	wait 2
 
   	quest_list_recursive(result, missions.map{|x| x.to_i})
 
