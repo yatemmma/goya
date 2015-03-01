@@ -22,7 +22,7 @@ handler = Proc.new do |req, res|
 		db = SQLite3::Database.new(DATABASE_PATH)
 		db.execute(
 			sql, 
-			:uri   => req.unparsed_uri, 
+			:uri   => req.unparsed_uri.split('kcsapi')[1], 
 			:query => req.query.to_json, 
 			:body  => res.body.to_s.sub(/svdata=/, ""),
 			:created_at => Time.now.to_s,

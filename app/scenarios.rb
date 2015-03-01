@@ -3,22 +3,20 @@ require 'logger'
 
 module Scenarios
 
-  def login(params=nil)
+  def login
     result = action(:common, :login).port_result
-    wait 3
-    mission_complete(result)    
+    mission_complete(result)
   end
 
-  def back_to_port(params=nil)
-    result = action(:common, :port).port_result
-
-    mission_complete(result)    
+  def back_to_port
+    port_result = action(:common, :port).result(:port)
+    mission_complete(port_result)
   end
 
-  def mission_complete(result)
-    result = latest_result('/api_port/port').port_result if result.kind_of?(Array)
+  def mission_complete(port_result=nil)
+    port_result = latest_result('/api_port/port').result(:port) if port_result.nil?
 
-    decks_and_missions = result.complete_missions
+    decks_and_missions = port_result.complete_missions
     unless decks_and_missions.empty?
       mission_result(decks_and_missions)
       charge(decks_and_missions.map{|x| x[0, 1]}) # "1:4" => 1
@@ -29,26 +27,18 @@ module Scenarios
   # usage: mission_result(["2:3","3:5","4:9"])
   def mission_result(decks_and_missions=[])
     decks_and_missions.each do
-      wait 0.5
       action(:port, :mission_result)
-      wait 7
       action(:mission_result, :ok)
-      wait 1
       action(:mission_result, :ok)
-      wait 1
     end
   end
 
   # usage: charge([2,3,4])
   def charge(decks=[])
     action(:port, :charge)
-    wait 1
-
     decks.each do |deck_id|
       action(:charge, :deck, deck_id)
-      wait 0.5
       action(:charge, :select_all)
-      wait 0.5
       action(:charge, :exec)
     end
 
@@ -58,32 +48,24 @@ module Scenarios
   # usage: mission_start(["2:3","3:5","4:9"])
   def mission_start(decks_and_missions=[])
     action(:port, :battle_select)
-    wait 1
     action(:battle_select, :mission)
-    wait 1
 
     decks_and_missions.each do |deck_and_mission|
       deck_id, mission = deck_and_mission.split(":").map {|x| x.to_i}
       action(:mission, :area, ((mission-1)/8)+1)
-      wait 0.5
       action(:mission, :stage, mission%8 == 0 ? 8 : mission%8)
-      wait 0.5
       action(:mission, :select)
-      wait 0.5
       action(:mission, :deck, deck_id)
-      wait 0.5
       action(:mission, :start)
-      wait 6
     end
 
     back_to_port
   end
 
   # usage: quest_list(["402","403","410"])
-  def quest_list(missions=nil)
-  	result = action(:port, :quest_list).quest_list_result
+  def quest_list(missions=[])
+  	result = action(:port, :quest_list).result(:quest_list)
   	action(:quest_list, :oyodo)
-  	wait 2
 
   	quest_list_recursive(result, missions.map{|x| x.to_i})
 
@@ -92,19 +74,14 @@ module Scenarios
 
   # usage: develop(["1"])
   def develop(count=["1"])
-    quest_list(["605","607"]) # TODO: 3times
+    quest_list(["605","607"])
 
     action(:port, :kosho)
-    wait 1
     count.first.to_i.times do
       action(:kosho, :develop)
-      wait 1
       action(:develop, :bauxite_1up)
-      wait 0.5
       action(:develop, :start)
-      wait 10
       action(:develop, :ok)
-      wait 2
     end
   end
 
@@ -113,14 +90,11 @@ module Scenarios
     quest_list(["606","608"])
 
     action(:port, :kosho)
-    wait 1
 
     dock_ids.each do |dock_id|
       # TODO: complete latest_result('/api_get_member/kdock') and
       action(:kenzo, :dock, dock_id.to_i)
-      wait 1
       action(:kenzo, :start)
-      wait 3
     end
   end
 
@@ -128,9 +102,7 @@ module Scenarios
     quest_list(["609"])
     
     action(:port, :kosho)
-    wait 1
     action(:kosho, :kaitai)
-    wait 1
 
     # TODO: not implement yet
 
@@ -146,7 +118,7 @@ module Scenarios
 
   def develop_scenario2(params=nil)
     kenzo(["1", "2"])
-    # break
+    kaitai
   end
 
   def kira(param=nil)
@@ -159,22 +131,18 @@ module Scenarios
     deck_no  = 1
     area_no  = 3
     stage_no = 2
-    next_result = battle_select(deck_no, area_no, stage_no).next_result
-    wait 5
+    next_result = battle_select(deck_no, area_no, stage_no).result(:start)
     
-    action(:map, :compass) if next_result.has_compass?
-    wait 10
+    action(:map, :compass_battle)
     
-    battle_info = action(:map, :format, 1).battle_info
-    battle_info.hps
+    battle_info = action(:map, :format, 1).result(:battle)
 
     if battle_info.has_midnight?
       wait 80 # TODO:resultから計算
-      battle_result = action(:map, :midnight_no).battle_result
-      wait 10
+      battle_result = action(:map, :midnight_no).result(:battle_result)
     else
-      battle_result = action(:map, :battle_finish).battle_result
-      wait 10
+      battle_result = action(:map, :battle_finish).result(:battle_result)
+      # wait 10
     end
 
     action(:map, :result_ok)
@@ -196,30 +164,28 @@ module Scenarios
     deck_no  = 1
     area_no  = 2
     stage_no = 3
-    next_result = battle_select(deck_no, area_no, stage_no).next_result
-    wait 5
+    next_result = battle_select(deck_no, area_no, stage_no).result(:start)
     next_cell(next_result)
-    
   end
 
   private
   def next_cell(next_result)
-    action(:map, :compass) if next_result.has_compass?
+    
+    action(:map, :compass, next_result.battle? ? '_battle' : '') if next_result.has_compass?
+
     if next_result.battle?
-      wait 10
+      # wait 10
       # format選択判定
-      battle_info = action(:map, :format, 1).battle_info
-      battle_info.hps
+      battle_info = action(:map, :format, 1).result(:battle)
 
       battle_result = nil
       if battle_info.has_midnight?
         wait 60
-        battle_result = action(:map, :midnight_no).battle_result
-        wait 10
+        battle_result = action(:map, :midnight_no).result(:battle_result)
         # action(:map, :battle_result)
       else
-        battle_result = action(:map, :battle_finish).battle_result
-        wait 10
+        battle_result = action(:map, :battle_finish).result(:battle_result)
+        # wait 10
       end
 
       action(:map, :result_ok)
@@ -234,50 +200,41 @@ module Scenarios
       # wait 3
       # next_cell(next_result)
     else
-      next_result = action(:map, :go_next).next_result
+      next_result = action(:map, :go_next).result(:next)
       next_cell(next_result)
     end
   end
 
   def battle_select(deck_no, area_no, stage_no)
     action(:port, :battle_select)
-    wait 0.5
     action(:battle_select, :battle)
-    wait 0.5
     action(:battle, :area, area_no)
-    wait 0.5
     action(:battle, :stage, stage_no)
-    wait 0.5
     action(:battle, :select)
-    wait 0.5
     action(:battle, :deck, deck_no)
-    wait 1
     action(:battle, :start)
   end
 
   def quest_list_recursive(result, missions)
   	if result.complete_index
-  		clear_result = action(:quest_list, :complete, result.complete_index).clear_item_result
-      wait 3
+  		clear_result = action(:quest_list, :complete, result.complete_index).result(:clear_item)
       (clear_result.bonus_count - 1).times do #TODO: ここおかしい
         action(:quest_list, :ok)
-        wait 3
       end
-      result = action(:quest_list, :ok_last).quest_list_result
-      wait 2
+      result = action(:quest_list, :ok_last).result(:quest_list)
   		return quest_list_recursive(result, missions)
   	end
 
   	if missions && result.selectable?
   		index = result.quest_ids.find_index{|x| missions.include? x}
   		if index
-        result = action(:quest_list, :check, index).quest_list_result
+        result = action(:quest_list, :check, index).result(:quest_list)
   		  return quest_list_recursive(result, missions)
   	  end 
   	end
 
   	if result.has_next_page?
-  		result = action(:quest_list, :next).quest_list_result
+  		result = action(:quest_list, :next).result(:quest_list)
   		return quest_list_recursive(result, missions)
   	end
   end

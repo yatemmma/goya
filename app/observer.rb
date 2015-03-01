@@ -28,7 +28,7 @@ class Observer
 				return unless @waiting
 
 				results = db.execute("select * from logs where id > #{id} order by id desc")
-				uris = results.map {|row| convert_hash(row)[:uri].split('kcsapi')[1]}
+				uris = results.map {|row| convert_hash(row)[:uri]}
 				if (expects - uris).empty?
 					return results.map {|row| convert_hash(row)}
 				end
@@ -66,7 +66,7 @@ class Observer
 	def convert_hash(array)
 		keys = [:id, :uri, :query, :body, :created_at, :updated_at]
 		h = Hash[*[keys, array].transpose.flatten]
-		h[:body] = JSON.parse(h[:body])
+		h[:body]  = JSON.parse(h[:body])
 		h[:query] = JSON.parse(h[:query])
 		h
 	end

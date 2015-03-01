@@ -32,34 +32,40 @@ class Goya
         raise 'I\'m working now!' if @is_working
         
         @is_working = true
-        send(job, params)
+        if params.empty?
+          send(job)
+        else
+          send(job, params)
+        end
         speak(:job, "job completed.")
         @is_working = false
       end
     rescue => e
-      Logger.write("#{e.class}, #{e.message}")
-      Logger.write(e.backtrace.join("\n"))
+      Logger.error(e)
       speak(:error, e.message)
       cancel
     end
   end
 
   private
-  def action(page, button, index=nil)
+  def action(page, button, suffix=nil)
     raise "request cancelled." unless @is_working
 
-    button = "#{button}#{index}".to_sym unless index.nil?
-    x, y, *expects = get_target(page, button)
+    button = "#{button}#{suffix}".to_sym unless suffix.nil?
+    x, y, wait_time, *expects = get_target(page, button)
 
     speak(:click, page, button, expects)
-    
+
     if expects.empty?
       button_click(x, y)
+      wait(wait_time)
     else
       id = @observer.latest_id
       button_click(x, y)
       results = @observer.wait_for_response(id, expects)
-      Result.new(results)
+      wait(wait_time)
+      # Result.new(results)
+      results
     end
   end
 
@@ -88,7 +94,8 @@ class Goya
     data = @observer.latest_data(uri)
     body = {:uri => "latest: #{uri}", :body => data[:body]}
     speak(:uri, body[:uri], body[:data])
-    Result.new([data])
+    # Result.new([data])
+    [data]
   end
 
   def speak(type, *params)
@@ -103,6 +110,8 @@ class Goya
       response = {:page => params[0], :button => params[1], :expects => params[2]}
     when :error
       response = {:message => params.first}
+    when :info
+      response = {:params => params}
     else
       raise type
     end
@@ -124,12 +133,18 @@ class Goya
 
   def start_watching
     Thread.start do
-      @observer.watching do |new_response|
-        new_response.each do |response|
-          uri = response[:uri].split('kcsapi')[1]
-          body = {:uri => uri, :body => response[:body]}
-          speak(:uri, "#{uri}", body)
+      begin
+        @observer.watching do |responses|
+          responses.each_result do |result|
+            speak(:uri, result.uri, result.raw_data)
+            result.show_info.each do |info|
+              speak(:info, info)
+            end
+          end
         end
+      rescue => e
+        Logger.error(e)
+        speak(:error, e.message)
       end
     end
   end

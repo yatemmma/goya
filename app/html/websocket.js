@@ -26,14 +26,24 @@ var post = function() {
 };
 
 var print = function(msg) {
-  var $li = $("<li>");
   var response = null;
   try {
     response = JSON.parse(msg);
   } catch (e) {
     response = {};
   }
+
+  var $li = $("<li>");
+  $li.addClass(response.type);
   $span = $("<span>");
+
+  if (response.type === "info") {
+    $span.text(response.params);
+    $li.append($span);
+    $("#chat").prepend($li);
+    return;
+  }
+  
   if (response.type === "wait") {
     $span.text('wait ' + response.time + ' sec');
   } else if (response.type === "job") {
@@ -48,8 +58,7 @@ var print = function(msg) {
   } else {
     $span.text(msg);
   }
-  $li.addClass(response.type);
-  $li.prepend($("<span>").text(Date.create().format('{M}/{d} {hh}:{mm}:{ss}')));
+  $li.prepend($("<span>").text(Date.create().format('{M}/{d} {HH}:{mm}:{ss}')));
   $li.append($span);
   $("#chat").prepend($li);
 };

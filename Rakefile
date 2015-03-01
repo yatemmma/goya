@@ -46,7 +46,7 @@ namespace :server do
 end
 
 def start_server(exec_file, pid_file, nohup=false)
-	cmd = "bundle exec ruby -d -I app #{exec_file}"
+	cmd = "bundle exec ruby -I app #{exec_file}"
 	cmd = "nohup #{cmd} &" if nohup
 	puts cmd
 	system(cmd)

@@ -1,156 +1,67 @@
 require 'logger'
 
+URLS = {
+  :port => '/api_port/port',
+  :quest_list => '/api_get_member/questlist',
+  :battle => '/api_req_sortie/battle',
+  :battle_result => '/api_req_sortie/battleresult',
+  :start => '/api_req_map/start',
+  :next => '/api_req_map/next',
+  :map_cell => '/api_get_member/mapcell',
+  :clear_item => '/api_req_quest/clearitemget',
+}
+
+class Array # responses array
+  def each_result(&block)
+    self.each do |result|
+      sym, uri = URLS.find {|k, v| v.eql?(result[:uri])}
+      if sym.nil?
+        block.call(Result.new(result))
+      else
+        block.call(self.result(sym))
+      end
+    end
+  end
+
+  def result(sym)
+    result = self.find {|x| x[:uri].eql?(URLS[sym])}
+    class_name = sym.to_s.split("_").map{|x| x.capitalize}.join
+    eval(class_name).new(result)
+  end
+
+  def add_blank12
+    self + (12 - self.size).times.map{0}
+  end
+end
+
 class Result
+  attr :raw_data, :uri, :data
 
-  def initialize(results)
-  	@raw = results
+  def initialize(response)
+    @raw_data = response
+    @uri = @raw_data[:uri]
+    @data = @raw_data[:body]['api_data']
   end
 
-  def port_result
-    Port.new(@raw)
-  end
-
-  def quest_list_result
-    QuestList.new(@raw)
-  end
-
-  def clear_item_result
-    ClearItem.new(@raw)
-  end
-
-  def mapcell_result
-    MapCell.new(@raw)
-  end
-
-  def next_result
-    Next.new(@raw)
-  end
-
-  def battle_info
-    BattleInfo.new(@raw)
-  end
-
-  def battle_result
-    BattleResult.new(@raw)
-  end
-end
-
-class BattleResult
-  def initialize(raw_data)
-    @body = raw_data.find {|x| x[:uri].include?('/api_req_sortie/battleresult')}[:body]
-    @result = @body['api_data']
-  end
-
-  def get_ship?
-    not @result['api_get_ship'].nil?
-  end
-end
-
-class BattleInfo
-  def initialize(raw_data)
-    @body = raw_data.find {|x| x[:uri].include?('/api_req_sortie/battle')}[:body]
-    @battle = @body['api_data']
-  end
-
-  def has_midnight?
-    @battle['api_midnight_flag'].to_i == 1
-  end
-
-  def hps
-    nowhps = @battle['api_nowhps'].map{|x| x.to_i}
-    maxhps = @battle['api_maxhps'].map{|x| x.to_i}
-    ship_now = nowhps[1,6]
-    ship_hps   = nowhps.zip(maxhps)[1,6]
-    ship_hps_percent   = ship_hps.map   {|x| (x[0].to_f/x[1]*100).to_i}
-
-    if @battle['api_stage_flag'][2].to_i == 1 # airplane
-      ship_damages   = @battle['api_kouku']['api_stage3']['api_fdam'].map{|x| x.to_i}[1,6]
-      enemie_damages = @battle['api_kouku']['api_stage3']['api_edam'].map{|x| x.to_i}[1,6]
-      Logger.write("--airplane")
-      Logger.write(ship_damages)
-      Logger.write(enemie_damages)
-      ship_now = [ship_now, ship_damages].transpose.map{|a| a.inject(:-)}
-    end
-    # TODO: help
-    if @battle['api_opening_flag'].to_i == 1 # opening attack
-      ship_damages   = @battle['api_opening_atack']['api_fdam'].map{|x| x.to_i}[1,6]
-      enemie_damages = @battle['api_opening_atack']['api_edam'].map{|x| x.to_i}[1,6]
-      Logger.write("--opening attack")
-      Logger.write(ship_damages)
-      Logger.write(enemie_damages)
-      ship_now = [ship_now, ship_damages].transpose.map{|a| a.inject(:-)}
-    end
-    if @battle['api_hourai_flag'][0].to_i == 1 # hougeki1
-      index   = @battle['api_hougeki1']['api_df_list'].map{|x| x[0].to_i}
-      damages = @battle['api_hougeki1']['api_damage'].map{|x| x[0].to_i}
-      list = index.zip(damages)
-      list.shift
-      Logger.write("--hougeki")
-      Logger.write(list)
-      list.each {|x| ship_now[x[0]-1] -= x[1] unless ship_now[x[0]-1].nil?}
-      # ship_now = [ship_now, ship_damages].transpose.map{|a| a.inject(:-)}
-    end
-    # TODO: hougeki2
-    # TODO: hougeki3
-    if @battle['api_hourai_flag'][3].to_i == 1 # raigeki
-      ship_damages   = @battle['api_raigeki']['api_fdam'].map{|x| x.to_i}[1,6]
-      enemie_damages = @battle['api_raigeki']['api_edam'].map{|x| x.to_i}[1,6]
-      Logger.write("--raigeki")
-      Logger.write(ship_damages)
-      Logger.write(enemie_damages)
-      ship_now = [ship_now, ship_damages].transpose.map{|a| a.inject(:-)}
-    end
-    Logger.write("--start")
-    Logger.write(ship_hps)
-    Logger.write(ship_hps_percent)
-    ship_hps = ship_now.zip(maxhps[1,6])
-    ship_hps_percent = ship_hps.map {|x| (x[0].to_f/x[1]*100).to_i}
-    Logger.write("--end")
-    Logger.write(ship_hps)
-    Logger.write(ship_hps_percent)
-  end
-end
-
-class Next
-  def initialize(raw_data)
-    @body = raw_data.find {|x| 
-      x[:uri].include?('/api_req_map/start') || x[:uri].include?('/api_req_map/next')
-    }[:body]
-    @next = @body['api_data']
-  end
-
-  def battle?
-    @next['api_color_no'].to_i == 4
-  end
-
-  def has_compass?
-    @next['api_rashin_flg'].to_i == 1
-  end
-end
-
-class MapCell
-  def initialize(raw_data)
-    @body = raw_data.find {|x| x[:uri].include? '/api_get_member/mapcell'}[:body]
-  end
-
-  def get_cells
-    cells = @body['api_data']
-    cells.map {|cell| {:id => cell['api_id'], :passed => cell['api_passed']}}
+  def show_info
+    []
   end
 end
 
 # api_deck_port [x,x,x,x]
 #   api_mission [1, 3, 1423836746768, 0] ?, mission_no, time, ?
-class Port
-  def initialize(raw_data)
-    @body = raw_data.find {|x| x[:uri].include? '/api_port/port'}[:body]
-    @decks = @body['api_data']['api_deck_port']
+class Port < Result
+  def show_info
+    info = []
+    info << "complete_missions:#{complete_missions}" unless complete_missions.empty?
+    info
   end
 
   def complete_missions
-    missions = @decks.map {|deck| deck['api_mission']}
+    decks = @data['api_deck_port']
+    missions = decks.map {|deck| deck['api_mission']}
 
-    @decks.select {|deck|
+    decks.select {|deck|
       deck['api_mission'].first == 2
     }.map {|deck|
       "#{deck['api_id']}:#{deck['api_mission'][1]}"
@@ -158,16 +69,19 @@ class Port
   end
 end
 
-class QuestList
-  def initialize(raw_data)
-    @body = raw_data.find {|x| x[:uri].include? '/api_get_member/questlist'}[:body]
-
-    @quests = @body['api_data']['api_list'].reject {|x| x == -1}
+class QuestList < Result
+  def initialize(response)
+    super
+    @quests = @data['api_list'].reject {|x| x == -1}
   end
 
+  def show_info
+    []
+  end
+  
   def has_next_page?
-    current_page = @body['api_data']['api_disp_page'].to_i
-    page_count   = @body['api_data']['api_page_count'].to_i
+    current_page = @data['api_disp_page'].to_i
+    page_count   = @data['api_page_count'].to_i
     current_page < page_count
   end
 
@@ -182,19 +96,161 @@ class QuestList
   end
 
   def selectable?
-    @body['api_data']['api_exec_count'].to_i < 5
+    @data['api_exec_count'].to_i < 5
   end
 end
 
-# api_bounus [xxx]
-# api_bounus_count 1
-# api_material [30,30,30,30]
-class ClearItem
-  def initialize(raw_data)
-    @body = raw_data.find {|x| x[:uri].include? '/api_req_quest/clearitemget'}[:body]
+class Battle < Result
+  def initialize(response)
+    super
+    @max_hps   = @data['api_maxhps'].map{|x| x.to_i}[1..-1]
+    @start_hps = @data['api_nowhps'].map{|x| x.to_i}[1..-1]
+    @final_hps = inject_damages
+    @final_percent = hp_percent
+  end
+
+  def show_info
+    [
+      "airplane_damages: #{airplane_damages}",
+      "opening_damages: #{opening_damages}",
+      "hougeki1_damages: #{hougeki_damages(1)}",
+      "hougeki2_damages: #{hougeki_damages(2)}",
+      "hougeki3_damages: #{hougeki_damages(3)}",
+      "raigeki_damages: #{raigeki_damages}",
+      "start_hps: #{@start_hps.zip(@max_hps)}",
+      "final_hps: #{@final_hps.zip(@max_hps)}",
+      "final_percent: #{@final_percent}",
+      "hp_status: #{hp_status}",
+    ]
+  end
+
+  def has_midnight?
+    @data['api_midnight_flag'].to_i == 1
+  end
+
+  def inject_damages
+    [
+      @start_hps,
+      Array(airplane_damages  ).add_blank12,
+      Array(opening_damages   ).add_blank12,
+      Array(hougeki_damages(1)).add_blank12,
+      Array(hougeki_damages(2)).add_blank12,
+      Array(hougeki_damages(3)).add_blank12,
+      Array(raigeki_damages   ).add_blank12,
+    ].transpose.map{|x| x.inject(:-)}
+  end
+
+  def hp_percent
+    @final_hps.zip(@max_hps).map do |x|
+      final, max = x
+      (final.to_f/max*100).to_i
+    end
+  end
+
+  def hp_status
+    @final_percent.map do |x|
+      case x
+      when 76..100 then ''
+      when 51..75 then '*'
+      when 27..50 then '**'
+      when  1..26 then '***'
+      else '-'
+      end
+    end
+  end
+
+  def airplane_damages
+    if @data['api_stage_flag'][2].to_i == 1
+      ship_damages   = @data['api_kouku']['api_stage3']['api_fdam'].map{|x| x.to_i}[1..-1]
+      enemie_damages = @data['api_kouku']['api_stage3']['api_edam'].map{|x| x.to_i}[1..-1]
+      ship_damages + enemie_damages
+    end
+  end
+
+  def opening_damages
+    if @data['api_opening_flag'].to_i == 1
+      ship_damages   = @data['api_opening_atack']['api_fdam'].map{|x| x.to_i}[1..-1]
+      enemie_damages = @data['api_opening_atack']['api_edam'].map{|x| x.to_i}[1..-1]
+      ship_damages + enemie_damages
+    end
+  end
+
+  def hougeki_damages(no)
+    if @data['api_hourai_flag'][0].to_i == no
+      index   = @data["api_hougeki#{no}"]['api_df_list'].map{|x| x[0].to_i}[1..-1]
+      damages = @data["api_hougeki#{no}"]['api_damage'].map{|x| x[0].to_i}[1..-1]
+      
+      total = [-1].add_blank12
+      list = index.zip(damages)
+      list.each do |x|
+        i, value = x
+        total[i] += value
+      end
+      total[1..-1]
+    end
+  end
+
+  def raigeki_damages
+    if @data['api_hourai_flag'][3].to_i == 1
+      ship_damages   = @data['api_raigeki']['api_fdam'].map{|x| x.to_i}[1..-1]
+      enemie_damages = @data['api_raigeki']['api_edam'].map{|x| x.to_i}[1..-1]
+      ship_damages + enemie_damages
+    end
+  end
+end
+
+class BattleResult < Result
+  def show_info
+    [
+      "get_ship?: #{get_ship?}"
+    ]
+  end
+
+  def get_ship?
+    not @data['api_get_ship'].nil?
+  end
+end
+
+class Start < Result
+  def show_info
+    [
+      "battle?: #{battle?}",
+      "has_compass?: #{has_compass?}"
+    ]
+  end
+
+  def battle?
+    @data['api_color_no'].to_i == 4
+  end
+
+  def has_compass?
+    @data['api_rashin_flg'].to_i == 1
+  end
+end
+
+class Next < Start
+end
+
+class MapCell < Result
+  def show_info
+    []
+  end
+
+  def get_cells
+    @data.map {|cell| {:id => @data['api_id'], :passed => @data['api_passed']}}
+  end
+end
+
+class ClearItem < Result
+  def show_info
+    [
+      "bonus_count: #{bonus_count}"
+    ]
   end
 
   def bonus_count
-    @body['api_data']['api_bounus_count'].to_i
+    Logger.write("[DEBUG] bonus_count: #{@data['api_bounus_count'].to_i}")
+    Logger.write("[DEBUG] api_bounus: #{@data['api_bounus'].size}")
+    @data['api_bounus_count'].to_i
   end
 end
