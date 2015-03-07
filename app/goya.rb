@@ -19,6 +19,7 @@ class Goya
     @channel = channel
     @observer = Observer.new
     start_watching
+    load_master
   end
 
   def work(message=nil)
@@ -56,7 +57,10 @@ class Goya
 
     speak(:click, page, button, expects)
 
-    if expects.empty?
+    if wait_time < 0
+      button_move(x, y)
+      wait(wait_time.abs)
+    elsif expects.empty?
       button_click(x, y)
       wait(wait_time)
     else
@@ -75,9 +79,18 @@ class Goya
     click(x + DIFF_X, y + DIFF_Y)
   end
 
+  def button_move(x, y)
+    click(ACTIVE_X, ACTIVE_Y) # activate window
+    move(x + DIFF_X, y + DIFF_Y)
+  end
+
   def wait(time)
     speak(:wait, time)
     sleep time
+  end
+
+  def reload
+    speak(:reload)
   end
 
   def get_target(page, button)
@@ -93,8 +106,7 @@ class Goya
   def latest_result(uri)
     data = @observer.latest_data(uri)
     body = {:uri => "latest: #{uri}", :body => data[:body]}
-    speak(:uri, body[:uri], body[:data])
-    # Result.new([data])
+    speak(:uri, body[:uri], body[:body])
     [data]
   end
 
@@ -112,6 +124,8 @@ class Goya
       response = {:message => params.first}
     when :info
       response = {:params => params}
+    when :reload
+      response = {}
     else
       raise type
     end

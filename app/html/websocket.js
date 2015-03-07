@@ -51,10 +51,15 @@ var print = function(msg) {
   } else if (response.type === "uri") {
     $span.text(response.uri);
     console.log(response.data);
+    if (response.uri == '/api_start2') master = response.data;
+    if (response.uri == '/api_port/port') port = response.data;
   } else if (response.type === "click") {
     $span.text('[' + response.page + '] > [' + response.button + '] ' + response.expects.join(','));
   } else if (response.type === "error") {
     $span.text(response.message);
+  } else if (response.type === "reload") {
+    $span.text("reload game window");
+    reload();
   } else {
     $span.text(msg);
   }

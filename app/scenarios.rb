@@ -3,8 +3,18 @@ require 'logger'
 
 module Scenarios
 
+  def load_master
+    $master = latest_result('/api_start2').result(:master)
+  end
+
+  def game_load
+    reload
+    $master = action(:common, :loaded).result(:master)
+    login
+  end
+
   def login
-    result = action(:common, :login).port_result
+    result = action(:common, :login).result(:port)
     mission_complete(result)
   end
 
@@ -91,22 +101,49 @@ module Scenarios
 
     action(:port, :kosho)
 
+    kdock_result.complete_dock_ids.each do |dock_id|
+      action(:kosho, :dock, dock_id)
+      action(:kosho, :ok)
+    end
+
     dock_ids.each do |dock_id|
-      # TODO: complete latest_result('/api_get_member/kdock') and
+      next if kdock_result.building_dock_ids.include? dock_id.to_i
       action(:kenzo, :dock, dock_id.to_i)
       action(:kenzo, :start)
     end
   end
 
-  def kaitai(params=nil)
+  def kaitai(count=["1"])
+    game_load # for reset sort type to Lv.
+
     quest_list(["609"])
     
     action(:port, :kosho)
     action(:kosho, :kaitai)
 
-    # TODO: not implement yet
+    action(:kaitai, :sort) # Lv => Type
+    action(:kaitai, :sort) # Type => New
+
+    count.first.to_i.times do
+      action(:kaitai, :ship1)
+      action(:kaitai, :break)
+    end
 
     back_to_port
+  end
+
+  def akashi_develop
+    # not implemented yet
+    hensei(["1878", "144"]) # akashi, aoba
+    action(:port, :akashi_kosho)
+    action(:port, :akashi_kaishu)
+  end
+
+  def kdock_result
+    latest_result = [
+      latest_result('/api_get_member/kdock').result(:kdock),
+      latest_result('/api_req_kousyou/getship').result(:kousyou_getship)
+    ].max_by {|x| x.id}
   end
 
   def develop_scenario1(params=nil)
@@ -114,11 +151,46 @@ module Scenarios
     kenzo(["1"])
     develop(["3"])
     kenzo(["2"])
+    quest_list
   end
 
   def develop_scenario2(params=nil)
     kenzo(["1", "2"])
-    kaitai
+    kaitai(["2"])
+    akashi_develop
+    quest_list
+  end
+
+  def hensei(ships=["553","179"]) # api_id
+    port_result = latest_result('/api_port/port').result(:port)
+    action(:port, :hensei)
+
+    action(:hensei, :ship, 1)
+    action(:hensei, :sort) # Lv => Type
+    action(:hensei, :sort) # Type => New
+    action(:hensei, :cancel)
+
+    ships.each_with_index do |ship_id, i|
+      next if port_result.decks[0][i].to_i == ship_id.to_i
+
+      page_no, select_no = get_target_ship(ship_id.to_i)      
+      action(:hensei, :ship, i+1)
+      select_ship_page(page_no)
+      action(:hensei, :select, select_no)
+      action(:hensei, :select)
+    end
+
+    action(:hensei, :ship, 1)
+    action(:hensei, :sort) # New => Damage
+    action(:hensei, :sort) # Damage => Lv
+    action(:hensei, :cancel)
+
+    (port_result.decks[0].select{|x| x.to_i != -1}.count-ships.count).times do
+      action(:hensei, :ship, ships.count+1)
+      action(:hensei, :hazusu)
+    end
+
+    back_to_port
   end
 
   def kira(param=nil)
@@ -142,7 +214,6 @@ module Scenarios
       battle_result = action(:map, :midnight_no).result(:battle_result)
     else
       battle_result = action(:map, :battle_finish).result(:battle_result)
-      # wait 10
     end
 
     action(:map, :result_ok)
@@ -151,7 +222,7 @@ module Scenarios
     wait 10 if battle_result.get_ship?
     action(:map, :result_ok) if battle_result.get_ship?
     wait 2
-    result = action(:map, :back).port_result
+    result = action(:map, :back).result(:port)
 
     mission_complete(result)
 
@@ -205,6 +276,25 @@ module Scenarios
     end
   end
 
+  def select_ship_page(page_no)
+    action(:hensei, :first_page)
+    if (1..5).include? page_no
+      action(:hensei, :page, page_no)
+    elsif page_no > 5
+      (page_no-3).times do
+        action(:hensei, :page, 4)
+      end
+    end
+  end
+
+  def get_target_ship(ship_id)
+    port_result = latest_result('/api_port/port').result(:port)
+    index = port_result.ships.reverse.find_index {|x| x[:id] == ship_id} + 1
+    page_no = (index-1)/10 + 1
+    select_no = index % 10 == 0 ? 10 : index % 10
+    [page_no, select_no]
+  end
+
   def battle_select(deck_no, area_no, stage_no)
     action(:port, :battle_select)
     action(:battle_select, :battle)
@@ -218,9 +308,7 @@ module Scenarios
   def quest_list_recursive(result, missions)
   	if result.complete_index
   		clear_result = action(:quest_list, :complete, result.complete_index).result(:clear_item)
-      (clear_result.bonus_count - 1).times do #TODO: ここおかしい
-        action(:quest_list, :ok)
-      end
+      action(:quest_list, :ok) if clear_result.got_box?
       result = action(:quest_list, :ok_last).result(:quest_list)
   		return quest_list_recursive(result, missions)
   	end

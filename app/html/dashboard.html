@@ -26,6 +26,7 @@
 <input type="button" class="job-button" value="kira" />
 <input type="button" class="job-button" value="black_reveling" />
 <input type="button" class="job-button" value="oryol_cruising" />
+<input type="button" class="job-button" value="game_load" />
 <input type="button" class="command-button" value="cancel" />
 <input type="button" class="command-button" value="cursor" />
 <input type="button" class="command-button" value="start_watching" />
@@ -51,6 +52,10 @@ $(".command-button").click(function() {
 $(".loop-button").click(function() {
   eval($(this).val())();
 });
+
+function reload() {
+  window.open('game.html', 'game_window', "left="+0+",top="+0+",width="+798+",height="+478);
+}
 
 function mission_loop() {
 	$("#command").val("quest_list/402/403/404/410/411"); // mission ids

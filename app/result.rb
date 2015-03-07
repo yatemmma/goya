@@ -9,6 +9,9 @@ URLS = {
   :next => '/api_req_map/next',
   :map_cell => '/api_get_member/mapcell',
   :clear_item => '/api_req_quest/clearitemget',
+  :kdock => '/api_get_member/kdock',
+  :kousyou_getship => '/api_req_kousyou/getship',
+  :master => '/api_start2',
 }
 
 class Array # responses array
@@ -35,12 +38,13 @@ class Array # responses array
 end
 
 class Result
-  attr :raw_data, :uri, :data
+  attr :raw_data, :uri, :data, :id
 
   def initialize(response)
     @raw_data = response
     @uri = @raw_data[:uri]
     @data = @raw_data[:body]['api_data']
+    @id = @raw_data[:id].to_i
   end
 
   def show_info
@@ -54,6 +58,7 @@ class Port < Result
   def show_info
     info = []
     info << "complete_missions:#{complete_missions}" unless complete_missions.empty?
+    info << "decks: #{decks}"
     info
   end
 
@@ -66,6 +71,22 @@ class Port < Result
     }.map {|deck|
       "#{deck['api_id']}:#{deck['api_mission'][1]}"
     }
+  end
+
+  def ships
+    # ships={};master.body.api_data.api_mst_ship.each(function(x){ships[x.api_id] = x.api_name})
+    # port.body.api_data.api_ship.map(function(x){return {ship: ships[x.api_ship_id], lv:x.api_lv}})
+    @data['api_ship'].map do |x|
+      {
+        :id => x['api_id'].to_i,
+        :level => x['api_lv'].to_i,
+        :name => $master.ship(x['api_ship_id'].to_i)[:name]
+      }
+    end
+  end
+
+  def decks
+    @data['api_deck_port'].map {|x| x['api_ship']}
   end
 end
 
@@ -252,5 +273,59 @@ class ClearItem < Result
     Logger.write("[DEBUG] bonus_count: #{@data['api_bounus_count'].to_i}")
     Logger.write("[DEBUG] api_bounus: #{@data['api_bounus'].size}")
     @data['api_bounus_count'].to_i
+  end
+
+  def got_box?
+    not @data['api_bounus'].select {|x|
+      not x['api_item']['api_name'].empty?
+    }.empty?
+  end
+end
+
+class Kdock < Result
+  def initialize(response)
+    super
+    @kdocks = @data
+  end
+
+  def show_info
+    [
+      "dock_status: #{dock_status}",
+      "#{complete_dock_ids.map {|id| $master.ship(id)}}"
+    ]
+  end
+
+  def dock_status
+    @kdocks.map {|x| x['api_state']}
+  end
+
+  def complete_dock_ids
+    @kdocks.select {|x| x['api_state'].to_i == 3}.map {|x| x['api_id'].to_i}
+  end
+
+  def building_dock_ids
+    @kdocks.select {|x| (1..2).include? x['api_state'].to_i}.map {|x| x['api_id'].to_i}
+  end
+end
+
+class KousyouGetship < Kdock
+  def initialize(response)
+    super
+    @kdocks = @data['api_kdock']
+  end
+end
+
+class Master < Result
+  def initialize(response)
+    super
+    @m_ships = @data['api_mst_ship']
+  end
+
+  def ship(ship_id)
+    ship = @m_ships.find {|x| x['api_id'].to_i == ship_id}
+    {
+      :id => ship_id,
+      :name => ship['api_name']
+    }
   end
 end
